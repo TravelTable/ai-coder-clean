@@ -1,0 +1,110 @@
+openapi: 3.0.3
+info:
+  title: AI Coder Pro API
+  version: 1.0.0
+  description: Enterprise-grade code generation system via API.
+servers:
+  - url: https://ai-coder-pro-api-openaiapikey.up.railway.app
+paths:
+  /:
+    get:
+      summary: Root
+      description: Root health check for AI Coder Pro API.
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+  /generate:
+    post:
+      summary: Generate Project
+      description: Generate a custom code project from user description.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateRequest'
+      responses:
+        '200':
+          description: Successful project generation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateResponse'
+  /generate/simple:
+    post:
+      summary: Generate Simple Project
+      description: Generate a basic FastAPI project with minimal setup.
+      responses:
+        '200':
+          description: Simple project generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateResponse'
+  /generate/advanced:
+    post:
+      summary: Generate Advanced Project
+      description: Generate an advanced FastAPI project with auth, dashboard, tests, Dockerfile.
+      responses:
+        '200':
+          description: Advanced project generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateResponse'
+  /examples:
+    get:
+      summary: Get Example Prompts
+      description: Get example prompts and project setups users can try.
+      responses:
+        '200':
+          description: List of example prompts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  examples:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        prompt:
+                          type: string
+                        features:
+                          type: string
+                        tech_stack:
+                          type: string
+
+components:
+  schemas:
+    GenerateRequest:
+      type: object
+      properties:
+        prompt:
+          type: string
+          example: "Create a FastAPI app with user registration and login."
+        features:
+          type: string
+          example: "JWT authentication, SQLite database"
+        tech_stack:
+          type: string
+          example: "FastAPI, SQLAlchemy, SQLite"
+    GenerateResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        project_path:
+          type: string
+        files:
+          type: array
+          items:
+            type: string
