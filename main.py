@@ -3,25 +3,19 @@
 AI Coder Pro - Enterprise-Grade Code Generation System
 Version 3.2.0
 """
+
 from dotenv import load_dotenv
 load_dotenv()
-
-import os
-print("✅ ENV KEY:", os.getenv("OPENAI_API_KEY"))
-
 
 import os
 import sys
 import shutil
 import argparse
-from dotenv import load_dotenv
 from pathlib import Path
 from typing import Dict, Optional
-import webbrowser
 import subprocess
 from datetime import datetime
 
-# FastAPI Imports (NEW)
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import uvicorn
@@ -41,36 +35,22 @@ class AICoderPro:
         self.file_writer: Optional[AdvancedFileWriter] = None
 
     def _setup_environment(self) -> None:
-        """Initialize all environment requirements"""
         load_dotenv()
-
-        # Validate critical paths
         self._validate_paths()
-
-        # Check API key
         if not os.getenv("OPENAI_API_KEY"):
-            print("❌ Error: Missing OPENAI_API_KEY in .env file")
-            print("Please add your OpenAI API key as:")
-            print("OPENAI_API_KEY=your_key_here")
+            print("\u274c Error: Missing OPENAI_API_KEY in .env file")
             sys.exit(1)
 
     def _validate_paths(self) -> None:
-        """Ensure all required paths exist"""
         base_path = Path("C:/Users/jackt/OneDrive/ai-coder/projects")
         if not base_path.exists():
-            try:
-                base_path.mkdir(parents=True)
-                print(f"📁 Created projects directory at {base_path}")
-            except Exception as e:
-                print(f"❌ Failed to create projects directory: {str(e)}")
-                sys.exit(1)
+            base_path.mkdir(parents=True)
+            print(f"\ud83d\udcc1 Created projects directory at {base_path}")
 
     def _get_user_input(self) -> Dict[str, str]:
-        """Collect and validate user requirements"""
         print("\n" + "="*60)
-        print("🚀 AI Coder Pro - Enterprise Code Generator".center(60))
+        print("\ud83d\ude80 AI Coder Pro - Enterprise Code Generator".center(60))
         print("="*60 + "\n")
-
         print("Please describe your project in detail (examples below):")
         print("- 'FastAPI microservice for user authentication with JWT'")
         print("- 'Data pipeline for CSV processing with Pandas'")
@@ -78,7 +58,7 @@ class AICoderPro:
 
         prompt = input("Project description:\n> ").strip()
         while not prompt:
-            print("⚠️ Please enter a valid description")
+            print("\u26a0\ufe0f Please enter a valid description")
             prompt = input("> ").strip()
 
         default_name = "project_" + datetime.now().strftime("%Y%m%d_%H%M")
@@ -91,7 +71,6 @@ class AICoderPro:
         }
 
     def _generate_file_structure(self, requirements: Dict[str, str]) -> Dict[str, str]:
-        """Dynamically determine optimal file structure"""
         base_files = {
             "main.py": "Primary application entry point",
             "requirements.txt": "Project dependencies",
@@ -101,7 +80,6 @@ class AICoderPro:
             "README.md": "Project documentation"
         }
 
-        # Add framework-specific files
         if "fastapi" in requirements["tech_stack"].lower():
             base_files.update({
                 "app/main.py": "FastAPI application",
@@ -117,7 +95,6 @@ class AICoderPro:
                 "app/static/css/main.css": "Main stylesheet"
             })
 
-        # Add Docker support if mentioned
         if "docker" in requirements["features"].lower():
             base_files.update({
                 "Dockerfile": "Production container definition",
@@ -128,24 +105,20 @@ class AICoderPro:
         return base_files
 
     def _post_generation_actions(self) -> None:
-        """Execute post-generation workflows"""
         if not self.project_path:
             return
 
         print("\n" + "="*60)
-        print("🛠️  Post-Generation Actions".center(60))
+        print("\ud83d\udee0\ufe0f  Post-Generation Actions".center(60))
         print("="*60)
 
-        # Open in VSCode if available
         if shutil.which("code"):
             subprocess.run(["code", str(self.project_path)], shell=True)
-            print("✔ Opened project in VSCode")
+            print("\u2714 Opened project in VSCode")
 
-        # Show next steps
-        print("\n✅ Project generated successfully at:")
+        print("\n\u2705 Project generated successfully at:")
         print(f"  {self.project_path}")
-
-        print("\n🚀 Recommended next steps:")
+        print("\n\ud83d\ude80 Recommended next steps:")
         print(f"1. cd {self.project_path}")
         print("2. python -m venv .venv")
         print("3. .venv\\Scripts\\activate")
@@ -157,17 +130,16 @@ class AICoderPro:
             print("5. flask run")
 
     def run(self) -> None:
-        """Main execution flow"""
         try:
             self._setup_environment()
             requirements = self._get_user_input()
 
-            project_full_path = Path(r"C:/Users/jackt/OneDrive/ai-coder/projects") / self.project_name
+            project_full_path = Path("C:/Users/jackt/OneDrive/ai-coder/projects") / self.project_name
             self.file_writer = AdvancedFileWriter(base_path=project_full_path)
             self.project_path = project_full_path
 
             file_structure = self._generate_file_structure(requirements)
-            print(f"\n⚙️ Generating {len(file_structure)} files...")
+            print(f"\n\u2699\ufe0f Generating {len(file_structure)} files...")
 
             generated_files = self.code_gen.generate_project(
                 prompt=requirements["prompt"],
@@ -178,13 +150,13 @@ class AICoderPro:
             self._post_generation_actions()
 
         except KeyboardInterrupt:
-            print("\n🛑 Operation cancelled by user")
+            print("\n\ud83d\ude91 Operation cancelled by user")
             if hasattr(self, 'file_writer') and self.file_writer:
                 shutil.rmtree(self.file_writer.get_project_path(), ignore_errors=True)
             sys.exit(1)
 
         except Exception as e:
-            print(f"\n❌ Critical error: {str(e)}", file=sys.stderr)
+            print(f"\n\u274c Critical error: {str(e)}", file=sys.stderr)
             sys.exit(1)
 
 # ========================
@@ -211,9 +183,7 @@ def generate_project(request: GenerateRequest):
     try:
         coder = AICoderPro(strict_mode=False, detailed_mode=False)
         coder._setup_environment()
-        
-        # Fake user input from API
-        project_full_path = Path(r"C:/Users/jackt/OneDrive/ai-coder/projects") / ("project_" + datetime.now().strftime("%Y%m%d_%H%M"))
+        project_full_path = Path("C:/Users/jackt/OneDrive/ai-coder/projects") / ("project_" + datetime.now().strftime("%Y%m%d_%H%M"))
         coder.project_path = project_full_path
         coder.file_writer = AdvancedFileWriter(base_path=project_full_path)
 
@@ -239,16 +209,86 @@ def generate_project(request: GenerateRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/generate/simple")
+def generate_simple_project():
+    try:
+        coder = AICoderPro(strict_mode=False, detailed_mode=False)
+        coder._setup_environment()
+        project_full_path = Path("C:/Users/jackt/OneDrive/ai-coder/projects") / ("project_simple_" + datetime.now().strftime("%Y%m%d_%H%M"))
+        coder.project_path = project_full_path
+        coder.file_writer = AdvancedFileWriter(base_path=project_full_path)
+
+        file_structure = coder._generate_file_structure({
+            "prompt": "Create a simple FastAPI app with a homepage route returning a welcome message.",
+            "features": "Basic routing",
+            "tech_stack": "FastAPI"
+        })
+
+        generated_files = coder.code_gen.generate_project(
+            prompt="Create a simple FastAPI app with a homepage route returning a welcome message.",
+            file_structure=file_structure
+        )
+
+        coder.file_writer.write_files(generated_files)
+
+        return {
+            "message": "Simple project generated successfully",
+            "project_path": str(project_full_path),
+            "files": list(generated_files.keys())
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/generate/advanced")
+def generate_advanced_project():
+    try:
+        coder = AICoderPro(strict_mode=True, detailed_mode=True)
+        coder._setup_environment()
+        project_full_path = Path("C:/Users/jackt/OneDrive/ai-coder/projects") / ("project_advanced_" + datetime.now().strftime("%Y%m%d_%H%M"))
+        coder.project_path = project_full_path
+        coder.file_writer = AdvancedFileWriter(base_path=project_full_path)
+
+        file_structure = coder._generate_file_structure({
+            "prompt": "Create a full FastAPI backend with user login (JWT), admin dashboard, SQLite database, unit testing, and Docker support.",
+            "features": "Authentication, Admin panel, Database, Testing, Docker",
+            "tech_stack": "FastAPI, SQLAlchemy, SQLite, Docker, Pytest"
+        })
+
+        generated_files = coder.code_gen.generate_project(
+            prompt="Create a full FastAPI backend with user login (JWT), admin dashboard, SQLite database, unit testing, and Docker support.",
+            file_structure=file_structure
+        )
+
+        coder.file_writer.write_files(generated_files)
+
+        return {
+            "message": "Advanced project generated successfully",
+            "project_path": str(project_full_path),
+            "files": list(generated_files.keys())
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/examples")
+def get_examples():
+    return {
+        "examples": [
+            {"prompt": "Create a FastAPI app with JWT authentication.", "features": "Authentication", "tech_stack": "FastAPI, SQLite"},
+            {"prompt": "Build a Flask website with a contact form and email notification.", "features": "Forms, Email", "tech_stack": "Flask, SQLAlchemy"},
+            {"prompt": "Develop a Django CMS for blogs with comment moderation.", "features": "CMS, Blog, Comments", "tech_stack": "Django, PostgreSQL"}
+        ]
+    }
+
 # ========================
 # CLI Launcher
 # ========================
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
-        # Run CLI Mode
         args = parse_cli_args()
         AICoderPro(strict_mode=args.strict, detailed_mode=args.detailed).run()
     else:
-        # Run API Server Mode
         port = int(os.environ.get("PORT", 10000))
         uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
