@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 AI Coder Pro - Enterprise-Grade Code Generation System
 Version 3.2.0
