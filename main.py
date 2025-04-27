@@ -16,7 +16,6 @@ from pathlib import Path
 from typing import Dict, Optional
 import subprocess
 from datetime import datetime
-import requests
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -40,18 +39,18 @@ class AICoderPro:
         load_dotenv()
         self._validate_paths()
         if not os.getenv("OPENAI_API_KEY"):
-            print("\u274c Error: Missing OPENAI_API_KEY in .env file")
+            print("❌ Error: Missing OPENAI_API_KEY in .env file")
             sys.exit(1)
 
     def _validate_paths(self) -> None:
         base_path = Path("C:/Users/jackt/OneDrive/ai-coder/projects")
         if not base_path.exists():
             base_path.mkdir(parents=True)
-            print(f"\ud83d\udcc1 Created projects directory at {base_path}")
+            print("📁 Created projects directory at", base_path)
 
     def _get_user_input(self) -> Dict[str, str]:
         print("\n" + "="*60)
-        print("\ud83d\ude80 AI Coder Pro - Enterprise Code Generator".center(60))
+        print("🚀 AI Coder Pro - Enterprise Code Generator".center(60))
         print("="*60 + "\n")
         print("Please describe your project in detail (examples below):")
         print("- 'FastAPI microservice for user authentication with JWT'")
@@ -60,7 +59,7 @@ class AICoderPro:
 
         prompt = input("Project description:\n> ").strip()
         while not prompt:
-            print("\u26a0\ufe0f Please enter a valid description")
+            print("⚠️ Please enter a valid description")
             prompt = input("> ").strip()
 
         default_name = "project_" + datetime.now().strftime("%Y%m%d_%H%M")
@@ -106,51 +105,21 @@ class AICoderPro:
 
         return base_files
 
-    def _create_github_repo(self, repo_name: str) -> Optional[str]:
-        token = os.getenv("GITHUB_TOKEN")
-        if not token:
-            print("\u26a0\ufe0f Missing GITHUB_TOKEN in .env file. Skipping GitHub upload.")
-            return None
-
-        url = "https://api.github.com/user/repos"
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/vnd.github+json"
-        }
-        data = {
-            "name": repo_name,
-            "private": False
-        }
-
-        response = requests.post(url, headers=headers, json=data)
-        if response.status_code == 201:
-            print("\u2705 GitHub repository created successfully.")
-            return response.json().get("html_url")
-        else:
-            print(f"\u26a0\ufe0f GitHub repo creation failed: {response.json()}")
-            return None
-
     def _post_generation_actions(self) -> None:
         if not self.project_path:
             return
 
         print("\n" + "="*60)
-        print("\ud83d\udee0\ufe0f  Post-Generation Actions".center(60))
+        print("🛠️  Post-Generation Actions".center(60))
         print("="*60)
 
         if shutil.which("code"):
             subprocess.run(["code", str(self.project_path)], shell=True)
-            print("\u2714 Opened project in VSCode")
+            print("✔ Opened project in VSCode")
 
-        print("\n\u2705 Project generated successfully at:")
+        print("\n✅ Project generated successfully at:")
         print(f"  {self.project_path}")
-
-        # GitHub upload attempt
-        github_url = self._create_github_repo(self.project_name)
-        if github_url:
-            print(f"\ud83d\udcbe Repository URL: {github_url}")
-
-        print("\n\ud83d\ude80 Recommended next steps:")
+        print("\n🚀 Recommended next steps:")
         print(f"1. cd {self.project_path}")
         print("2. python -m venv .venv")
         print("3. .venv\\Scripts\\activate")
@@ -171,7 +140,7 @@ class AICoderPro:
             self.project_path = project_full_path
 
             file_structure = self._generate_file_structure(requirements)
-            print(f"\n\u2699\ufe0f Generating {len(file_structure)} files...")
+            print(f"\n⚙️ Generating {len(file_structure)} files...")
 
             generated_files = self.code_gen.generate_project(
                 prompt=requirements["prompt"],
@@ -182,13 +151,13 @@ class AICoderPro:
             self._post_generation_actions()
 
         except KeyboardInterrupt:
-            print("\n\ud83d\ude91 Operation cancelled by user")
+            print("\n🛑 Operation cancelled by user")
             if hasattr(self, 'file_writer') and self.file_writer:
                 shutil.rmtree(self.file_writer.get_project_path(), ignore_errors=True)
             sys.exit(1)
 
         except Exception as e:
-            print(f"\n\u274c Critical error: {str(e)}", file=sys.stderr)
+            print(f"\n❌ Critical error: {str(e)}", file=sys.stderr)
             sys.exit(1)
 
 # ========================
@@ -231,6 +200,7 @@ def generate_project(request: GenerateRequest):
         )
 
         coder.file_writer.write_files(generated_files)
+
         return {
             "message": "Project generated successfully",
             "project_path": str(project_full_path),
@@ -250,17 +220,18 @@ def generate_simple_project():
         coder.file_writer = AdvancedFileWriter(base_path=project_full_path)
 
         file_structure = coder._generate_file_structure({
-            "prompt": "Create a simple FastAPI app with a homepage.",
+            "prompt": "Create a simple FastAPI app with a homepage route returning a welcome message.",
             "features": "Basic routing",
             "tech_stack": "FastAPI"
         })
 
         generated_files = coder.code_gen.generate_project(
-            prompt="Create a simple FastAPI app with a homepage.",
+            prompt="Create a simple FastAPI app with a homepage route returning a welcome message.",
             file_structure=file_structure
         )
 
         coder.file_writer.write_files(generated_files)
+
         return {
             "message": "Simple project generated successfully",
             "project_path": str(project_full_path),
@@ -280,17 +251,18 @@ def generate_advanced_project():
         coder.file_writer = AdvancedFileWriter(base_path=project_full_path)
 
         file_structure = coder._generate_file_structure({
-            "prompt": "Create a full FastAPI backend with user login, admin dashboard, database, tests, Docker support.",
-            "features": "Authentication, Admin, Database, Testing, Docker",
+            "prompt": "Create a full FastAPI backend with user login (JWT), admin dashboard, SQLite database, unit testing, and Docker support.",
+            "features": "Authentication, Admin panel, Database, Testing, Docker",
             "tech_stack": "FastAPI, SQLAlchemy, SQLite, Docker, Pytest"
         })
 
         generated_files = coder.code_gen.generate_project(
-            prompt="Create a full FastAPI backend with user login, admin dashboard, database, tests, Docker support.",
+            prompt="Create a full FastAPI backend with user login (JWT), admin dashboard, SQLite database, unit testing, and Docker support.",
             file_structure=file_structure
         )
 
         coder.file_writer.write_files(generated_files)
+
         return {
             "message": "Advanced project generated successfully",
             "project_path": str(project_full_path),
@@ -305,8 +277,8 @@ def get_examples():
     return {
         "examples": [
             {"prompt": "Create a FastAPI app with JWT authentication.", "features": "Authentication", "tech_stack": "FastAPI, SQLite"},
-            {"prompt": "Build a Flask app with contact form.", "features": "Forms, Email", "tech_stack": "Flask, SQLAlchemy"},
-            {"prompt": "Develop a Django CMS.", "features": "CMS, Blog, Comments", "tech_stack": "Django, PostgreSQL"}
+            {"prompt": "Build a Flask website with a contact form and email notification.", "features": "Forms, Email", "tech_stack": "Flask, SQLAlchemy"},
+            {"prompt": "Develop a Django CMS for blogs with comment moderation.", "features": "CMS, Blog, Comments", "tech_stack": "Django, PostgreSQL"}
         ]
     }
 
