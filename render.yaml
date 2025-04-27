@@ -1,10 +1,15 @@
 services:
   - type: web
     name: ai-coder-pro-api
-    env: python
+    runtime: python
+    region: oregon
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python main.py
     envVars:
-      - key: ENV
-        value: production
+      - key: OPENAI_API_KEY
+        sync: false
+    autoDeploy: true
+    healthCheckPath: /
+    branch: main
+    rootDir: .
