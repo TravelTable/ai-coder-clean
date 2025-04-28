@@ -50,7 +50,7 @@ class AICoderPro:
 
     def _get_user_input(self) -> Dict[str, str]:
         print("\n" + "="*60)
-        print("\ud83d\ude80 AI Coder Pro - Enterprise Code Generator".center(60))
+        print("AI Coder Pro - Enterprise Code Generator".center(60))
         print("="*60 + "\n")
         print("Please describe your project in detail (examples below):")
         print("- 'FastAPI microservice for user authentication with JWT'")
