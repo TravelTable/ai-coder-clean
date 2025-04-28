@@ -11,9 +11,9 @@ import os
 import sys
 import shutil
 import argparse
+import subprocess
 from pathlib import Path
 from typing import Dict, Optional
-import subprocess
 from datetime import datetime
 
 from fastapi import FastAPI, HTTPException
@@ -23,22 +23,6 @@ import uvicorn
 # Local imports
 from generators.openai_engine import CodeGenerator as EliteCodeGenerator, parse_cli_args
 from writers.file_writer import AdvancedFileWriter
-
-# ========================
-# GitHub Upload Function
-# ========================
-def upload_to_github(project_path: Path, repo_name: str, token: str) -> None:
-    try:
-        subprocess.run(["git", "init"], cwd=project_path, check=True)
-        subprocess.run(["git", "config", "user.name", "AutoBot"], cwd=project_path, check=True)
-        subprocess.run(["git", "config", "user.email", "autobot@example.com"], cwd=project_path, check=True)
-        subprocess.run(["git", "add", "."], cwd=project_path, check=True)
-        subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=project_path, check=True)
-        subprocess.run([
-            "gh", "repo", "create", repo_name, "--public", "--source", str(project_path), "--remote=origin", "--push"
-        ], check=True, env={**os.environ, "GH_TOKEN": token})
-    except subprocess.CalledProcessError as e:
-        raise Exception(f"GitHub upload failed: {str(e)}")
 
 # ========================
 # CLI Class - AICoderPro
@@ -95,6 +79,7 @@ class AICoderPro:
             "tests/__init__.py": "Test package",
             "README.md": "Project documentation"
         }
+
         if "fastapi" in requirements["tech_stack"].lower():
             base_files.update({
                 "app/main.py": "FastAPI application",
@@ -109,46 +94,99 @@ class AICoderPro:
                 "app/templates/base.html": "Base template",
                 "app/static/css/main.css": "Main stylesheet"
             })
+
         if "docker" in requirements["features"].lower():
             base_files.update({
                 "Dockerfile": "Production container definition",
                 "docker-compose.yml": "Development environment",
                 ".dockerignore": "Docker ignore rules"
             })
+
         return base_files
 
     def _post_generation_actions(self) -> None:
         if not self.project_path:
             return
+
         print("\n" + "="*60)
         print("\ud83d\udee0\ufe0f  Post-Generation Actions".center(60))
         print("="*60)
+
         if shutil.which("code"):
             subprocess.run(["code", str(self.project_path)], shell=True)
             print("\u2714 Opened project in VSCode")
+
         print("\n\u2705 Project generated successfully at:")
         print(f"  {self.project_path}")
+        print("\n\ud83d\ude80 Recommended next steps:")
+        print(f"1. cd {self.project_path}")
+        print("2. python -m venv .venv")
+        print("3. .venv\\Scripts\\activate")
+        print("4. pip install -r requirements.txt")
+
+        if "fastapi" in str(self.project_path).lower():
+            print("5. uvicorn app.main:app --reload")
+        elif "flask" in str(self.project_path).lower():
+            print("5. flask run")
+
+    def upload_to_github(self, repo_name: str, github_token: str) -> None:
+        try:
+            if not self.project_path:
+                raise Exception("Project path is not set.")
+
+            commands = [
+                ["git", "init"],
+                ["git", "config", "user.name", "AI-Coder-Pro"],
+                ["git", "config", "user.email", "coderpro@example.com"],
+                ["git", "remote", "add", "origin", f"https://{github_token}@github.com/{self.get_github_username(github_token)}/{repo_name}.git"],
+                ["git", "add", "."],
+                ["git", "commit", "-m", "Initial commit"],
+                ["git", "branch", "-M", "main"],
+                ["git", "push", "-u", "origin", "main"]
+            ]
+
+            for cmd in commands:
+                subprocess.run(cmd, cwd=str(self.project_path), check=True, capture_output=True, text=True)
+
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"GitHub upload failed: {e.stderr.strip()}")
+
+    def get_github_username(self, github_token: str) -> str:
+        import requests
+        headers = {
+            "Authorization": f"token {github_token}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        r = requests.get("https://api.github.com/user", headers=headers)
+        r.raise_for_status()
+        return r.json()["login"]
 
     def run(self) -> None:
         try:
             self._setup_environment()
             requirements = self._get_user_input()
+
             project_full_path = Path("C:/Users/jackt/OneDrive/ai-coder/projects") / self.project_name
             self.file_writer = AdvancedFileWriter(base_path=project_full_path)
             self.project_path = project_full_path
+
             file_structure = self._generate_file_structure(requirements)
             print(f"\n\u2699\ufe0f Generating {len(file_structure)} files...")
+
             generated_files = self.code_gen.generate_project(
                 prompt=requirements["prompt"],
                 file_structure=file_structure
             )
+
             self.file_writer.write_files(generated_files)
             self._post_generation_actions()
+
         except KeyboardInterrupt:
             print("\n\ud83d\ude91 Operation cancelled by user")
             if hasattr(self, 'file_writer') and self.file_writer:
                 shutil.rmtree(self.file_writer.get_project_path(), ignore_errors=True)
             sys.exit(1)
+
         except Exception as e:
             print(f"\n\u274c Critical error: {str(e)}", file=sys.stderr)
             sys.exit(1)
@@ -179,26 +217,34 @@ def generate_project(request: GenerateRequest):
     try:
         coder = AICoderPro(strict_mode=False, detailed_mode=False)
         coder._setup_environment()
-        project_full_path = Path("C:/Users/jackt/OneDrive/ai-coder/projects") / (request.github_repo_name or ("project_" + datetime.now().strftime("%Y%m%d_%H%M")))
+
+        project_name = request.github_repo_name or ("project_" + datetime.now().strftime("%Y%m%d_%H%M"))
+        project_full_path = Path("C:/Users/jackt/OneDrive/ai-coder/projects") / project_name
         coder.project_path = project_full_path
         coder.file_writer = AdvancedFileWriter(base_path=project_full_path)
+
         file_structure = coder._generate_file_structure({
             "prompt": request.prompt,
             "features": request.features,
             "tech_stack": request.tech_stack
         })
+
         generated_files = coder.code_gen.generate_project(
             prompt=request.prompt,
             file_structure=file_structure
         )
+
         coder.file_writer.write_files(generated_files)
+
         if request.github_repo_name and request.github_token:
-            upload_to_github(coder.project_path, request.github_repo_name, request.github_token)
+            coder.upload_to_github(request.github_repo_name, request.github_token)
+
         return {
             "message": "Project generated successfully",
             "project_path": str(project_full_path),
             "files": list(generated_files.keys())
         }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -207,8 +253,8 @@ def get_examples():
     return {
         "examples": [
             {"prompt": "Create a FastAPI app with JWT authentication.", "features": "Authentication", "tech_stack": "FastAPI, SQLite"},
-            {"prompt": "Build a Flask website with contact form.", "features": "Forms, Email", "tech_stack": "Flask, SQLAlchemy"},
-            {"prompt": "Develop a Django CMS for blogs.", "features": "CMS, Blog, Comments", "tech_stack": "Django, PostgreSQL"}
+            {"prompt": "Build a Flask app with contact form.", "features": "Forms, Email", "tech_stack": "Flask, SQLAlchemy"},
+            {"prompt": "Develop a Django CMS.", "features": "CMS, Blog, Comments", "tech_stack": "Django, PostgreSQL"}
         ]
     }
 
