@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 AI Coder Pro - Enterprise-Grade Code Generation System
-Version 3.2.0
+Version 3.3.0
 """
 
 from dotenv import load_dotenv
@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Dict, Optional
 import subprocess
 from datetime import datetime
+import requests
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -38,18 +39,18 @@ class AICoderPro:
         load_dotenv()
         self._validate_paths()
         if not os.getenv("OPENAI_API_KEY"):
-            print("❌ Error: Missing OPENAI_API_KEY in .env file")
+            print("\u274c Error: Missing OPENAI_API_KEY in .env file")
             sys.exit(1)
 
     def _validate_paths(self) -> None:
         base_path = Path("C:/Users/jackt/OneDrive/ai-coder/projects")
         if not base_path.exists():
             base_path.mkdir(parents=True)
-            print(f"📁 Created projects directory at {base_path}")
+            print(f"\ud83d\udcc1 Created projects directory at {base_path}")
 
     def _get_user_input(self) -> Dict[str, str]:
         print("\n" + "="*60)
-        print("🚀 AI Coder Pro - Enterprise Code Generator".center(60))
+        print("\ud83d\ude80 AI Coder Pro - Enterprise Code Generator".center(60))
         print("="*60 + "\n")
         print("Please describe your project in detail (examples below):")
         print("- 'FastAPI microservice for user authentication with JWT'")
@@ -58,7 +59,7 @@ class AICoderPro:
 
         prompt = input("Project description:\n> ").strip()
         while not prompt:
-            print("⚠️ Please enter a valid description")
+            print("\u26a0\ufe0f Please enter a valid description")
             prompt = input("> ").strip()
 
         default_name = "project_" + datetime.now().strftime("%Y%m%d_%H%M")
@@ -109,55 +110,15 @@ class AICoderPro:
             return
 
         print("\n" + "="*60)
-        print("🛠️  Post-Generation Actions".center(60))
+        print("\ud83d\udee0\ufe0f  Post-Generation Actions".center(60))
         print("="*60)
 
         if shutil.which("code"):
             subprocess.run(["code", str(self.project_path)], shell=True)
-            print("✔ Opened project in VSCode")
+            print("\u2714 Opened project in VSCode")
 
-        print("\n✅ Project generated successfully at:")
+        print("\n\u2705 Project generated successfully at:")
         print(f"  {self.project_path}")
-        print("\n🚀 Recommended next steps:")
-        print(f"1. cd {self.project_path}")
-        print("2. python -m venv .venv")
-        print("3. .venv\\Scripts\\activate")
-        print("4. pip install -r requirements.txt")
-
-        if "fastapi" in str(self.project_path).lower():
-            print("5. uvicorn app.main:app --reload")
-        elif "flask" in str(self.project_path).lower():
-            print("5. flask run")
-
-    def run(self) -> None:
-        try:
-            self._setup_environment()
-            requirements = self._get_user_input()
-
-            project_full_path = Path("C:/Users/jackt/OneDrive/ai-coder/projects") / self.project_name
-            self.file_writer = AdvancedFileWriter(base_path=project_full_path)
-            self.project_path = project_full_path
-
-            file_structure = self._generate_file_structure(requirements)
-            print(f"\n⚙️ Generating {len(file_structure)} files...")
-
-            generated_files = self.code_gen.generate_project(
-                prompt=requirements["prompt"],
-                file_structure=file_structure
-            )
-
-            self.file_writer.write_files(generated_files)
-            self._post_generation_actions()
-
-        except KeyboardInterrupt:
-            print("\n🛑 Operation cancelled by user")
-            if hasattr(self, 'file_writer') and self.file_writer:
-                shutil.rmtree(self.file_writer.get_project_path(), ignore_errors=True)
-            sys.exit(1)
-
-        except Exception as e:
-            print(f"\n❌ Critical error: {str(e)}", file=sys.stderr)
-            sys.exit(1)
 
 # ========================
 # FastAPI Server Code
@@ -166,13 +127,15 @@ class AICoderPro:
 app = FastAPI(
     title="AI Coder Pro API",
     description="Enterprise-grade code generation system via API",
-    version="3.2.0"
+    version="3.3.0"
 )
 
 class GenerateRequest(BaseModel):
     prompt: str
     features: Optional[str] = ""
     tech_stack: Optional[str] = ""
+    github_repo_name: Optional[str] = None
+    github_token: Optional[str] = None
 
 @app.get("/")
 def root():
@@ -200,39 +163,11 @@ def generate_project(request: GenerateRequest):
 
         coder.file_writer.write_files(generated_files)
 
+        if request.github_repo_name and request.github_token:
+            _upload_to_github(request.github_repo_name, request.github_token, project_full_path)
+
         return {
             "message": "Project generated successfully",
-            "project_path": str(project_full_path),
-            "files": list(generated_files.keys())
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/generate/simple")
-def generate_simple_project():
-    try:
-        coder = AICoderPro(strict_mode=False, detailed_mode=False)
-        coder._setup_environment()
-        project_full_path = Path("C:/Users/jackt/OneDrive/ai-coder/projects") / ("project_simple_" + datetime.now().strftime("%Y%m%d_%H%M"))
-        coder.project_path = project_full_path
-        coder.file_writer = AdvancedFileWriter(base_path=project_full_path)
-
-        file_structure = coder._generate_file_structure({
-            "prompt": "Create a simple FastAPI app with a homepage route returning a welcome message.",
-            "features": "Basic routing",
-            "tech_stack": "FastAPI"
-        })
-
-        generated_files = coder.code_gen.generate_project(
-            prompt="Create a simple FastAPI app with a homepage route returning a welcome message.",
-            file_structure=file_structure
-        )
-
-        coder.file_writer.write_files(generated_files)
-
-        return {
-            "message": "Simple project generated successfully",
             "project_path": str(project_full_path),
             "files": list(generated_files.keys())
         }
@@ -245,10 +180,39 @@ def get_examples():
     return {
         "examples": [
             {"prompt": "Create a FastAPI app with JWT authentication.", "features": "Authentication", "tech_stack": "FastAPI, SQLite"},
-            {"prompt": "Build a Flask website with a contact form and email notification.", "features": "Forms, Email", "tech_stack": "Flask, SQLAlchemy"},
-            {"prompt": "Develop a Django CMS for blogs with comment moderation.", "features": "CMS, Blog, Comments", "tech_stack": "Django, PostgreSQL"}
+            {"prompt": "Build a Flask website with a contact form.", "features": "Forms, Email", "tech_stack": "Flask, SQLAlchemy"},
+            {"prompt": "Develop a Django CMS for blogs.", "features": "CMS, Blog", "tech_stack": "Django, PostgreSQL"}
         ]
     }
+
+# ========================
+# GitHub Upload Helper
+# ========================
+
+def _upload_to_github(repo_name: str, token: str, project_path: Path) -> None:
+    try:
+        headers = {
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github+json"
+        }
+        response = requests.post(
+            "https://api.github.com/user/repos",
+            json={"name": repo_name},
+            headers=headers
+        )
+        if response.status_code != 201:
+            raise Exception(f"GitHub repo creation failed: {response.text}")
+
+        # Git commands
+        subprocess.run("git init", cwd=project_path, shell=True, check=True)
+        subprocess.run("git add .", cwd=project_path, shell=True, check=True)
+        subprocess.run("git commit -m 'Initial commit'", cwd=project_path, shell=True, check=True)
+        subprocess.run(f"git remote add origin https://github.com/your-username-here/{repo_name}.git", cwd=project_path, shell=True, check=True)
+        subprocess.run("git branch -M main", cwd=project_path, shell=True, check=True)
+        subprocess.run("git push -u origin main", cwd=project_path, shell=True, check=True)
+
+    except Exception as e:
+        raise Exception(f"GitHub upload failed: {str(e)}")
 
 # ========================
 # CLI Launcher
