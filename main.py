@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 AI Coder Pro - Enterprise-Grade Code Generation System
-Version 3.4.0 (Auto-create GitHub Repo)
+Version 3.3.1
 """
 
 from dotenv import load_dotenv
@@ -21,13 +21,9 @@ from pydantic import BaseModel
 import uvicorn
 import requests
 
-# Local imports
 from generators.openai_engine import CodeGenerator as EliteCodeGenerator, parse_cli_args
 from writers.file_writer import AdvancedFileWriter
 
-# ========================
-# CLI Class - AICoderPro
-# ========================
 class AICoderPro:
     def __init__(self, strict_mode: bool = False, detailed_mode: bool = False):
         self.project_name: Optional[str] = None
@@ -39,17 +35,17 @@ class AICoderPro:
         load_dotenv()
         self._validate_paths()
         if not os.getenv("OPENAI_API_KEY"):
-            print("\u274c Error: Missing OPENAI_API_KEY in .env file")
+            print("Error: Missing OPENAI_API_KEY in .env file")
             sys.exit(1)
 
     def _validate_paths(self) -> None:
         base_path = Path("C:/Users/jackt/OneDrive/ai-coder/projects")
         if not base_path.exists():
             base_path.mkdir(parents=True)
-            print(f"\ud83d\udcc1 Created projects directory at {base_path}")
+            print("Created projects directory at", base_path)
 
     def _get_user_input(self) -> Dict[str, str]:
-        print("\n" + "="*60)
+        print("="*60)
         print("AI Coder Pro - Enterprise Code Generator".center(60))
         print("="*60 + "\n")
         print("Please describe your project in detail (examples below):")
@@ -59,7 +55,7 @@ class AICoderPro:
 
         prompt = input("Project description:\n> ").strip()
         while not prompt:
-            print("\u26a0\ufe0f Please enter a valid description")
+            print("Please enter a valid description")
             prompt = input("> ").strip()
 
         default_name = "project_" + datetime.now().strftime("%Y%m%d_%H%M")
@@ -109,21 +105,25 @@ class AICoderPro:
         if not self.project_path:
             return
 
-        print("\n" + "="*60)
-        print("\ud83d\udee0\ufe0f  Post-Generation Actions".center(60))
+        print("="*60)
+        print("Post-Generation Actions".center(60))
         print("="*60)
 
         if shutil.which("code"):
             subprocess.run(["code", str(self.project_path)], shell=True)
-            print("\u2714 Opened project in VSCode")
+            print("Opened project in VSCode")
 
-        print("\n\u2705 Project generated successfully at:")
-        print(f"  {self.project_path}")
-        print("\n\ud83d\ude80 Recommended next steps:")
+        print("\nProject generated successfully at:", self.project_path)
+        print("\nRecommended next steps:")
         print(f"1. cd {self.project_path}")
         print("2. python -m venv .venv")
         print("3. .venv\\Scripts\\activate")
         print("4. pip install -r requirements.txt")
+
+        if "fastapi" in str(self.project_path).lower():
+            print("5. uvicorn app.main:app --reload")
+        elif "flask" in str(self.project_path).lower():
+            print("5. flask run")
 
     def get_github_username(self, github_token: str) -> str:
         headers = {
@@ -139,18 +139,10 @@ class AICoderPro:
             "Authorization": f"token {github_token}",
             "Accept": "application/vnd.github.v3+json"
         }
-        data = {
-            "name": repo_name,
-            "private": False
-        }
-        response = requests.post("https://api.github.com/user/repos", headers=headers, json=data)
-
-        if response.status_code == 422 and "already exists" in response.text:
-            print(f"ℹ️ Repo {repo_name} already exists, continuing...")
-        elif response.status_code != 201:
-            raise Exception(f"❌ Failed to create GitHub repo: {response.text}")
-        else:
-            print(f"✅ GitHub repo {repo_name} created successfully.")
+        data = {"name": repo_name, "private": False}
+        r = requests.post("https://api.github.com/user/repos", json=data, headers=headers)
+        if r.status_code not in [201, 422]:  # 422 if repo already exists
+            r.raise_for_status()
 
     def upload_to_github(self, repo_name: str, github_token: str) -> None:
         if not self.project_path:
@@ -183,7 +175,7 @@ class AICoderPro:
             self.project_path = project_full_path
 
             file_structure = self._generate_file_structure(requirements)
-            print(f"\n⚙️ Generating {len(file_structure)} files...")
+            print(f"Generating {len(file_structure)} files...")
 
             generated_files = self.code_gen.generate_project(
                 prompt=requirements["prompt"],
@@ -194,23 +186,20 @@ class AICoderPro:
             self._post_generation_actions()
 
         except KeyboardInterrupt:
-            print("\n🛑 Operation cancelled by user")
+            print("\nOperation cancelled by user")
             if hasattr(self, 'file_writer') and self.file_writer:
                 shutil.rmtree(self.file_writer.get_project_path(), ignore_errors=True)
             sys.exit(1)
 
         except Exception as e:
-            print(f"\n❌ Critical error: {str(e)}", file=sys.stderr)
+            print(f"\nCritical error: {str(e)}", file=sys.stderr)
             sys.exit(1)
 
-# ========================
-# FastAPI Server Code
-# ========================
-
+# FastAPI Setup
 app = FastAPI(
     title="AI Coder Pro API",
     description="Enterprise-grade code generation system via API",
-    version="3.4.0"
+    version="3.3.1"
 )
 
 class GenerateRequest(BaseModel):
@@ -269,10 +258,6 @@ def get_examples():
             {"prompt": "Develop a Django CMS.", "features": "CMS, Blog, Comments", "tech_stack": "Django, PostgreSQL"}
         ]
     }
-
-# ========================
-# CLI Launcher
-# ========================
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
