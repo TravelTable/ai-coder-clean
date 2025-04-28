@@ -139,25 +139,26 @@ class AICoderPro:
         r.raise_for_status()
         return r.json()["login"]
 
-    def upload_to_github(self, repo_name: str, github_token: str) -> None:
-        if not self.project_path:
-            raise Exception("Project path is not set.")
+def upload_to_github(self, repo_name: str, github_token: str) -> None:
+    if not self.project_path:
+        raise Exception("Project path is not set.")
 
-        username = self.get_github_username(github_token)
-        repo_url = f"https://{username}:{github_token}@github.com/{username}/{repo_name}.git"
+    username = self.get_github_username(github_token)
+    repo_url = f"https://{username}:{github_token}@github.com/{username}/{repo_name}.git"
 
-        try:
-            subprocess.run(["git", "init"], cwd=str(self.project_path), check=True)
-            subprocess.run(["git", "config", "user.name", username], cwd=str(self.project_path), check=True)
-            subprocess.run(["git", "config", "user.email", f"{username}@users.noreply.github.com"], cwd=str(self.project_path), check=True)
-            subprocess.run(["git", "add", "."], cwd=str(self.project_path), check=True)
-            subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=str(self.project_path), check=True)
-            subprocess.run(["git", "branch", "-M", "main"], cwd=str(self.project_path), check=True)
-            subprocess.run(["git", "remote", "add", "origin", repo_url], cwd=str(self.project_path), check=True)
-            subprocess.run(["git", "push", "-u", "origin", "main"], cwd=str(self.project_path), check=True)
+    try:
+        subprocess.run(["git", "init"], cwd=str(self.project_path), check=True)
+        subprocess.run(["git", "config", "user.name", username], cwd=str(self.project_path), check=True)
+        subprocess.run(["git", "config", "user.email", f"{username}@users.noreply.github.com"], cwd=str(self.project_path), check=True)
+        subprocess.run(["git", "add", "."], cwd=str(self.project_path), check=True)
+        subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=str(self.project_path), check=True)
+        subprocess.run(["git", "branch", "-M", "main"], cwd=str(self.project_path), check=True)
+        subprocess.run(["git", "remote", "add", "origin", repo_url], cwd=str(self.project_path), check=True)
+        subprocess.run(["git", "push", "-u", "origin", "main"], cwd=str(self.project_path), check=True)
+    except subprocess.CalledProcessError as e:
+        raise Exception(f"GitHub upload failed: {e.stderr or str(e)}")
 
-        except subprocess.CalledProcessError as e:
-            raise Exception(f"GitHub upload failed: {e.stderr or str(e)}")
+
 
     def run(self) -> None:
         try:
