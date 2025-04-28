@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #!/usr/bin/env python3
 """
 AI Coder Pro - Enterprise-Grade Code Generation System
@@ -46,7 +45,7 @@ class AICoderPro:
         base_path = Path("C:/Users/jackt/OneDrive/ai-coder/projects")
         if not base_path.exists():
             base_path.mkdir(parents=True)
-            print("📁 Created projects directory at", base_path)
+            print(f"📁 Created projects directory at {base_path}")
 
     def _get_user_input(self) -> Dict[str, str]:
         print("\n" + "="*60)
@@ -234,58 +233,6 @@ def generate_simple_project():
 
         return {
             "message": "Simple project generated successfully",
-            "project_path": str(project_full_path),
-            "files": list(generated_files.keys())
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/generate/advanced")
-def generate_advanced_project():
-    try:
-        coder = AICoderPro(strict_mode=True, detailed_mode=True)
-        coder._setup_environment()
-        project_full_path = Path("C:/Users/jackt/OneDrive/ai-coder/projects") / ("project_advanced_" + datetime.now().strftime("%Y%m%d_%H%M"))
-        coder.project_path = project_full_path
-        coder.file_writer = AdvancedFileWriter(base_path=project_full_path)
-
-        file_structure = coder._generate_file_structure({
-            "prompt": "Create a full FastAPI backend with user login (JWT), admin dashboard, SQLite database, unit testing, and Docker support.",
-            "features": "Authentication, Admin panel, Database, Testing, Docker",
-            "tech_stack": "FastAPI, SQLAlchemy, SQLite, Docker, Pytest"
-        })
-
-        # Retry logic
-        generated_files = {}
-        success = False
-        for attempt in range(3):
-            try:
-                generated_files = coder.code_gen.generate_project(
-                    prompt="Create a full FastAPI backend with user login (JWT), admin dashboard, SQLite database, unit testing, and Docker support.",
-                    file_structure=file_structure
-                )
-                if generated_files:
-                    success = True
-                    break
-            except Exception as e:
-                pass  # Try again
-        
-        if not success:
-            # Fallback: manually create minimal project
-            generated_files = {
-                "main.py": "# Fallback Main file\nfrom fastapi import FastAPI\napp = FastAPI()\n\n@app.get('/')\ndef read_root():\n    return {\"message\": \"Hello from fallback!\"}",
-                "requirements.txt": "fastapi\nuvicorn\nsqlalchemy\npydantic",
-                "README.md": "# AI Coder Pro - Fallback Project\n\nGenerated due to OpenAI failure.",
-                "config/__init__.py": "",
-                "config/settings.py": "# Basic settings file",
-                "tests/__init__.py": ""
-            }
-
-        coder.file_writer.write_files(generated_files)
-
-        return {
-            "message": "Advanced project generated successfully",
             "project_path": str(project_full_path),
             "files": list(generated_files.keys())
         }
