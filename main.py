@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 AI Coder Pro - Enterprise-Grade Code Generation System
-Version 3.3.0
+Version 3.4.0 (Auto-create GitHub Repo)
 """
 
 from dotenv import load_dotenv
@@ -125,11 +125,6 @@ class AICoderPro:
         print("3. .venv\\Scripts\\activate")
         print("4. pip install -r requirements.txt")
 
-        if "fastapi" in str(self.project_path).lower():
-            print("5. uvicorn app.main:app --reload")
-        elif "flask" in str(self.project_path).lower():
-            print("5. flask run")
-
     def get_github_username(self, github_token: str) -> str:
         headers = {
             "Authorization": f"token {github_token}",
@@ -139,12 +134,32 @@ class AICoderPro:
         r.raise_for_status()
         return r.json()["login"]
 
+    def create_github_repo(self, repo_name: str, github_token: str) -> None:
+        headers = {
+            "Authorization": f"token {github_token}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        data = {
+            "name": repo_name,
+            "private": False
+        }
+        response = requests.post("https://api.github.com/user/repos", headers=headers, json=data)
+
+        if response.status_code == 422 and "already exists" in response.text:
+            print(f"ℹ️ Repo {repo_name} already exists, continuing...")
+        elif response.status_code != 201:
+            raise Exception(f"❌ Failed to create GitHub repo: {response.text}")
+        else:
+            print(f"✅ GitHub repo {repo_name} created successfully.")
+
     def upload_to_github(self, repo_name: str, github_token: str) -> None:
         if not self.project_path:
             raise Exception("Project path is not set.")
 
         username = self.get_github_username(github_token)
         repo_url = f"https://{username}:{github_token}@github.com/{username}/{repo_name}.git"
+
+        self.create_github_repo(repo_name, github_token)
 
         try:
             subprocess.run(["git", "init"], cwd=str(self.project_path), check=True, text=True)
@@ -195,7 +210,7 @@ class AICoderPro:
 app = FastAPI(
     title="AI Coder Pro API",
     description="Enterprise-grade code generation system via API",
-    version="3.3.0"
+    version="3.4.0"
 )
 
 class GenerateRequest(BaseModel):
