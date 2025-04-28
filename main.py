@@ -256,10 +256,31 @@ def generate_advanced_project():
             "tech_stack": "FastAPI, SQLAlchemy, SQLite, Docker, Pytest"
         })
 
-        generated_files = coder.code_gen.generate_project(
-            prompt="Create a full FastAPI backend with user login (JWT), admin dashboard, SQLite database, unit testing, and Docker support.",
-            file_structure=file_structure
-        )
+        # Retry logic
+        generated_files = {}
+        success = False
+        for attempt in range(3):
+            try:
+                generated_files = coder.code_gen.generate_project(
+                    prompt="Create a full FastAPI backend with user login (JWT), admin dashboard, SQLite database, unit testing, and Docker support.",
+                    file_structure=file_structure
+                )
+                if generated_files:
+                    success = True
+                    break
+            except Exception as e:
+                pass  # Try again
+        
+        if not success:
+            # Fallback: manually create minimal project
+            generated_files = {
+                "main.py": "# Fallback Main file\nfrom fastapi import FastAPI\napp = FastAPI()\n\n@app.get('/')\ndef read_root():\n    return {\"message\": \"Hello from fallback!\"}",
+                "requirements.txt": "fastapi\nuvicorn\nsqlalchemy\npydantic",
+                "README.md": "# AI Coder Pro - Fallback Project\n\nGenerated due to OpenAI failure.",
+                "config/__init__.py": "",
+                "config/settings.py": "# Basic settings file",
+                "tests/__init__.py": ""
+            }
 
         coder.file_writer.write_files(generated_files)
 
