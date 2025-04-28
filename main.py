@@ -39,18 +39,18 @@ class AICoderPro:
         load_dotenv()
         self._validate_paths()
         if not os.getenv("OPENAI_API_KEY"):
-            print("❌ Error: Missing OPENAI_API_KEY in .env file")
+            print("\u274c Error: Missing OPENAI_API_KEY in .env file")
             sys.exit(1)
 
     def _validate_paths(self) -> None:
         base_path = Path("C:/Users/jackt/OneDrive/ai-coder/projects")
         if not base_path.exists():
             base_path.mkdir(parents=True)
-            print(f"📁 Created projects directory at {base_path}")
+            print(f"\ud83d\udcc1 Created projects directory at {base_path}")
 
     def _get_user_input(self) -> Dict[str, str]:
         print("\n" + "="*60)
-        print("🚀 AI Coder Pro - Enterprise Code Generator".center(60))
+        print("\ud83d\ude80 AI Coder Pro - Enterprise Code Generator".center(60))
         print("="*60 + "\n")
         print("Please describe your project in detail (examples below):")
         print("- 'FastAPI microservice for user authentication with JWT'")
@@ -59,7 +59,7 @@ class AICoderPro:
 
         prompt = input("Project description:\n> ").strip()
         while not prompt:
-            print("⚠️ Please enter a valid description")
+            print("\u26a0\ufe0f Please enter a valid description")
             prompt = input("> ").strip()
 
         default_name = "project_" + datetime.now().strftime("%Y%m%d_%H%M")
@@ -110,16 +110,16 @@ class AICoderPro:
             return
 
         print("\n" + "="*60)
-        print("🛠️  Post-Generation Actions".center(60))
+        print("\ud83d\udee0\ufe0f  Post-Generation Actions".center(60))
         print("="*60)
 
         if shutil.which("code"):
             subprocess.run(["code", str(self.project_path)], shell=True)
-            print("✔ Opened project in VSCode")
+            print("\u2714 Opened project in VSCode")
 
-        print("\n✅ Project generated successfully at:")
+        print("\n\u2705 Project generated successfully at:")
         print(f"  {self.project_path}")
-        print("\n🚀 Recommended next steps:")
+        print("\n\ud83d\ude80 Recommended next steps:")
         print(f"1. cd {self.project_path}")
         print("2. python -m venv .venv")
         print("3. .venv\\Scripts\\activate")
@@ -130,6 +130,15 @@ class AICoderPro:
         elif "flask" in str(self.project_path).lower():
             print("5. flask run")
 
+    def get_github_username(self, github_token: str) -> str:
+        headers = {
+            "Authorization": f"token {github_token}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        r = requests.get("https://api.github.com/user", headers=headers)
+        r.raise_for_status()
+        return r.json()["login"]
+
     def upload_to_github(self, repo_name: str, github_token: str) -> None:
         if not self.project_path:
             raise Exception("Project path is not set.")
@@ -139,22 +148,16 @@ class AICoderPro:
 
         try:
             subprocess.run(["git", "init"], cwd=str(self.project_path), check=True)
+            subprocess.run(["git", "config", "user.name", username], cwd=str(self.project_path), check=True)
+            subprocess.run(["git", "config", "user.email", f"{username}@users.noreply.github.com"], cwd=str(self.project_path), check=True)
             subprocess.run(["git", "add", "."], cwd=str(self.project_path), check=True)
-            subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=str(self.project_path), check=True, encoding="utf-8", errors="ignore")
+            subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=str(self.project_path), check=True)
             subprocess.run(["git", "branch", "-M", "main"], cwd=str(self.project_path), check=True)
             subprocess.run(["git", "remote", "add", "origin", repo_url], cwd=str(self.project_path), check=True)
             subprocess.run(["git", "push", "-u", "origin", "main"], cwd=str(self.project_path), check=True)
-        except subprocess.CalledProcessError as e:
-            raise Exception(f"GitHub upload failed: {e.stderr or e}")
 
-    def get_github_username(self, github_token: str) -> str:
-        headers = {
-            "Authorization": f"token {github_token}",
-            "Accept": "application/vnd.github.v3+json"
-        }
-        r = requests.get("https://api.github.com/user", headers=headers)
-        r.raise_for_status()
-        return r.json()["login"]
+        except subprocess.CalledProcessError as e:
+            raise Exception(f"GitHub upload failed: {e.stderr or str(e)}")
 
     def run(self) -> None:
         try:
